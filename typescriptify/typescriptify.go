@@ -239,6 +239,16 @@ func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 	return t
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
 	keyType := field.Type.Key()
 	valueType := field.Type.Elem()
@@ -254,7 +264,15 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	}
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
-	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName))
+	knownTypes := []string{"string", "number", "boolean"}
+	var keyTypeResolved string
+	if contains(knownTypes, keyType.Name()) {
+		keyTypeResolved = keyType.Name()
+	} else {
+		keyTypeResolved = t.prefix + keyType.Name() + t.suffix
+	}
+
+	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, keyTypeResolved, valueTypeName))
 	if valueType.Kind() == reflect.Struct {
 		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = this.convertValues(source[\"%s\"], %s, true);", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+valueTypeName+t.suffix))
 	} else {
